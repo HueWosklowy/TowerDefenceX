@@ -3,31 +3,27 @@ using UnityEngine.EventSystems;
 
 public class Node : MonoBehaviour, IPointerClickHandler
 {
-    [SerializeField] GameObject turretPrefab;
     [SerializeField] Vector3 positionOffset;
+    private GameObject turret;
 
-    GameObject turret;
+    public Vector3 BuildPosition => transform.position + positionOffset;
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        // If UI is clicked over the node, EventSystem usually blocks it, 
+        // but we double-check if the node already has a turret.
         if (turret != null)
         {
             Debug.Log("Cannot add another turret here!");
             return;
         }
-        BuildTurret();
+
+        // Open the shop selection menu at this node
+        BuildManager.Instance.OpenShopMenu(this);
     }
 
-    void BuildTurret()
+    public void SetTurret(GameObject turretInstance)
     {
-        int cost = turretPrefab.GetComponent<Turret>().Cost;
-
-        if (!GameManager.Instance.TrySpendMoney(cost))
-        {
-            Debug.Log("Sir, more money please!");
-            return;
-        }
-
-        turret = Instantiate(turretPrefab, transform.position + positionOffset, Quaternion.identity);
+        turret = turretInstance;
     }
 }
