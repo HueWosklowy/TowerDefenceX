@@ -4,10 +4,17 @@ using UnityEngine.Tilemaps;
 
 public class TilemapPath : MonoBehaviour
 {
-    [SerializeField] Tilemap pathTilemap;   // tilemapa, na której narysowana jest ścieżka
-    [SerializeField] TileBase startTile;     // wyróżniony kafelek = początek trasy
+    [SerializeField] Tilemap pathTilemap;
+    [SerializeField] TileBase startTile;
 
-    public static Vector3[] Points { get; private set; }   // środki kafelków w kolejności
+    [Header("Hex Settings")]
+    [SerializeField] bool pointTop = true; 
+    // true  = Hexagon Point Top
+    // false = Hexagon Flat Top
+    [SerializeField] Vector3 worldOffset = Vector3.zero;
+    // np. jeśli przeciwnik nadal jest za nisko, ustaw np. (0, 0.2f, 0)
+
+    public static Vector3[] Points { get; private set; }
 
     void Awake()
     {
@@ -20,8 +27,11 @@ public class TilemapPath : MonoBehaviour
         List<Vector3Int> cells = TraceFrom(start);
 
         Vector3[] worldPoints = new Vector3[cells.Count];
+
         for (int i = 0; i < cells.Count; i++)
-            worldPoints[i] = pathTilemap.GetCellCenterWorld(cells[i]);
+        {
+            worldPoints[i] = pathTilemap.GetCellCenterWorld(cells[i]) + worldOffset;
+        }
 
         return worldPoints;
     }
@@ -33,7 +43,8 @@ public class TilemapPath : MonoBehaviour
             if (pathTilemap.GetTile(cell) == startTile)
                 return cell;
         }
-        Debug.LogError("TilemapPath: nie znalazłem kafelka startowego (startTile)!");
+
+        Debug.LogError("TilemapPath: nie znalazłem kafelka startowego!");
         return Vector3Int.zero;
     }
 
@@ -43,29 +54,95 @@ public class TilemapPath : MonoBehaviour
         HashSet<Vector3Int> visited = new HashSet<Vector3Int>();
 
         Vector3Int current = start;
+
         path.Add(current);
         visited.Add(current);
 
-        // Sąsiedzi w 4 kierunkach (bez skosów)
-        Vector3Int[] dirs = { Vector3Int.right, Vector3Int.left, Vector3Int.up, Vector3Int.down };
-
         bool moved = true;
+
         while (moved)
         {
             moved = false;
-            foreach (Vector3Int dir in dirs)
+
+            foreach (Vector3Int dir in GetHexDirs(current))
             {
                 Vector3Int next = current + dir;
+
                 if (!visited.Contains(next) && pathTilemap.HasTile(next))
                 {
                     current = next;
                     path.Add(current);
                     visited.Add(current);
                     moved = true;
-                    break;   // podążamy jedną ścieżką
+                    break;
                 }
             }
         }
+
         return path;
+    }
+
+    Vector3Int[] GetHexDirs(Vector3Int cell)
+    {
+        if (pointTop)
+        {
+            // Hexagon Point Top — zależne od parzystości Y
+            bool oddRow = Mathf.Abs(cell.y) % 2 == 1;
+
+            if (oddRow)
+            {
+                return new Vector3Int[]
+                {
+                    new Vector3Int(1, 0, 0),
+                    new Vector3Int(-1, 0, 0),
+                    new Vector3Int(1, 1, 0),
+                    new Vector3Int(0, 1, 0),
+                    new Vector3Int(1, -1, 0),
+                    new Vector3Int(0, -1, 0)
+                };
+            }
+            else
+            {
+                return new Vector3Int[]
+                {
+                    new Vector3Int(1, 0, 0),
+                    new Vector3Int(-1, 0, 0),
+                    new Vector3Int(0, 1, 0),
+                    new Vector3Int(-1, 1, 0),
+                    new Vector3Int(0, -1, 0),
+                    new Vector3Int(-1, -1, 0)
+                };
+            }
+        }
+        else
+        {
+            // Hexagon Flat Top — zależne od parzystości X
+            bool oddColumn = Mathf.Abs(cell.x) % 2 == 1;
+
+            if (oddColumn)
+            {
+                return new Vector3Int[]
+                {
+                    new Vector3Int(0, 1, 0),
+                    new Vector3Int(0, -1, 0),
+                    new Vector3Int(1, 1, 0),
+                    new Vector3Int(1, 0, 0),
+                    new Vector3Int(-1, 1, 0),
+                    new Vector3Int(-1, 0, 0)
+                };
+            }
+            else
+            {
+                return new Vector3Int[]
+                {
+                    new Vector3Int(0, 1, 0),
+                    new Vector3Int(0, -1, 0),
+                    new Vector3Int(1, 0, 0),
+                    new Vector3Int(1, -1, 0),
+                    new Vector3Int(-1, 0, 0),
+                    new Vector3Int(-1, -1, 0)
+                };
+            }
+        }
     }
 }
