@@ -4,26 +4,34 @@ using UnityEngine.EventSystems;
 public class Node : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] Vector3 positionOffset;
-    private GameObject turret;
+    private GameObject turretInstance;
+    private Turret turretScript;
 
     public Vector3 BuildPosition => transform.position + positionOffset;
+    public Turret CurrentTurret => turretScript;
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        // If UI is clicked over the node, EventSystem usually blocks it, 
-        // but we double-check if the node already has a turret.
-        if (turret != null)
+        if (turretInstance != null)
         {
-            Debug.Log("Cannot add another turret here!");
+            // Open UPGRADE/SELL menu because a turret exists here
+            BuildManager.Instance.OpenUpgradeMenu(this);
             return;
         }
 
-        // Open the shop selection menu at this node
+        // Open SHOP menu because the tile is empty
         BuildManager.Instance.OpenShopMenu(this);
     }
 
-    public void SetTurret(GameObject turretInstance)
+    public void SetTurret(GameObject spawned)
     {
-        turret = turretInstance;
+        turretInstance = spawned;
+        turretScript = spawned != null ? spawned.GetComponent<Turret>() : null;
+    }
+
+    public void ClearNode()
+    {
+        if (turretInstance != null) Destroy(turretInstance);
+        SetTurret(null);
     }
 }
