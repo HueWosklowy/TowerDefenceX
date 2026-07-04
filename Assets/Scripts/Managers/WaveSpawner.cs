@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -34,6 +35,27 @@ public class WaveSpawner : MonoBehaviour
     void OnEnable() => GameManager.Instance.GameEnded += OnGameEnded;
     void OnDisable() => GameManager.Instance.GameEnded -= OnGameEnded;
 
+
+    public event Action<int, int> WaveChanged;
+
+public int TotalWaves => waves.Count;
+
+public int CurrentWaveNumber
+{
+    get
+    {
+        if (waves.Count == 0)
+            return 0;
+
+        return Mathf.Clamp(waveIndex + 1, 1, waves.Count);
+    }
+}
+
+void Start()
+{
+    NotifyWaveChanged();
+}
+
     void OnGameEnded(bool isGameWon)
     {
         gameEnded = true;
@@ -56,8 +78,10 @@ public class WaveSpawner : MonoBehaviour
             yield break;
         }
 
-        isSpawning = true;
-        WaveData wave = waves[waveIndex];
+    isSpawning = true;
+    NotifyWaveChanged();
+
+    WaveData wave = waves[waveIndex];
 
         foreach (EnemySpawnEntry entry in wave.enemies)
         {
@@ -79,6 +103,7 @@ public class WaveSpawner : MonoBehaviour
 
         // next wave
         waveIndex++;
+NotifyWaveChanged();
         if (waveIndex >= waves.Count)
         {
             if (loopWaves)
@@ -107,4 +132,10 @@ public class WaveSpawner : MonoBehaviour
         if (!gameEnded)
             GameManager.Instance.WinGame();
     }
+
+    void NotifyWaveChanged()
+{
+    WaveChanged?.Invoke(CurrentWaveNumber, TotalWaves);
+}
+
 }
