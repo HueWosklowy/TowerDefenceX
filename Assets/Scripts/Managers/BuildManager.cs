@@ -8,60 +8,49 @@ public class BuildManager : MonoBehaviour
     [SerializeField] GameObject standardTurretPrefab;
     [SerializeField] GameObject fastTurretPrefab;
 
-    [Header("UI Reference")]
-    [SerializeField] GameObject shopMenuUI; // Assign your Canvas UI panel here
+    [Header("UI References")]
+    [SerializeField] GameObject shopMenuUI; 
+    [SerializeField] GameObject upgradeMenuUI; // Assign your new Upgrade Panel UI here
+
+    [Header("Upgrade Balancing")]
+    [SerializeField] int upgradeCost = 30;
+    [SerializeField] int damageIncrease = 100;
 
     private Node targetNode;
 
     void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         
-        // Hide shop menu at start
         if (shopMenuUI != null) shopMenuUI.SetActive(false);
+        if (upgradeMenuUI != null) upgradeMenuUI.SetActive(false);
     }
 
     public void OpenShopMenu(Node node)
     {
+        if (upgradeMenuUI.activeSelf) upgradeMenuUI.SetActive(false); // Close other menu
         targetNode = node;
-        
-        if (shopMenuUI != null)
-        {
-            shopMenuUI.SetActive(true);
-            
-            // Optional: Move UI to the node's screen position if using a World Space canvas
-            //shopMenuUI.transform.position = node.BuildPosition;
-        }
+        if (shopMenuUI != null) shopMenuUI.SetActive(true);
     }
 
-    // Call this method from your UI Button for the Standard Turret
-    public void SelectStandardTurret() => BuildTurret(standardTurretPrefab);
-
-    // Call this method from your UI Button for the Fast Turret
-    public void SelectFastTurret() => BuildTurret(fastTurretPrefab);
-
-    // Call this method from your UI "Back" Button to close the menu
-    public void CloseShopMenu()
+    public void OpenUpgradeMenu(Node node)
     {
-        shopMenuUI.SetActive(false);
-        targetNode = null; // Clear the node reference so nothing gets built by accident
+        if (shopMenuUI.activeSelf) shopMenuUI.SetActive(false); // Close other menu
+        targetNode = node;
+        if (upgradeMenuUI != null) upgradeMenuUI.SetActive(true);
     }
+
+    public void SelectStandardTurret() => BuildTurret(standardTurretPrefab);
+    public void SelectFastTurret() => BuildTurret(fastTurretPrefab);
 
     private void BuildTurret(GameObject turretPrefab)
     {
         if (targetNode == null || turretPrefab == null) return;
-
         Turret turretScript = turretPrefab.GetComponent<Turret>();
         if (turretScript == null) return;
 
-        int cost = turretScript.Cost;
-
-        if (!GameManager.Instance.TrySpendMoney(cost))
+        if (!GameManager.Instance.TrySpendMoney(turretScript.Cost))
         {
             Debug.Log("Sir, more money please!");
             shopMenuUI.SetActive(false);
@@ -71,8 +60,50 @@ public class BuildManager : MonoBehaviour
         GameObject spawnedTurret = Instantiate(turretPrefab, targetNode.BuildPosition, Quaternion.identity);
         targetNode.SetTurret(spawnedTurret);
 
-        // Close the menu after successfully building
         shopMenuUI.SetActive(false);
+        targetNode = null;
+    }
+
+    // --- NEW UPGRADE & SELL METHODS ---
+
+    public void UpgradeSelectedTurret()
+    {
+        if (targetNode == null || targetNode.CurrentTurret == null) return;
+
+        if (!GameManager.Instance.TrySpendMoney(upgradeCost))
+        {
+            Debug.Log("Not enough money to upgrade!");
+            upgradeMenuUI.SetActive(false);
+            return;
+        }
+
+        targetNode.CurrentTurret.UpgradeTurret(damageIncrease);
+        CloseUpgradeMenu();
+    }
+
+    public void SellSelectedTurret()
+    {
+        if (targetNode == null || targetNode.CurrentTurret == null) return;
+
+        int goldEarned = targetNode.CurrentTurret.GetSellValue();
+        
+        // Assuming your GameManager has an AddMoney or similar function:
+        // GameManager.Instance.AddMoney(goldEarned); 
+        Debug.Log($"Sold turret for ${goldEarned}!");
+
+        targetNode.ClearNode();
+        CloseUpgradeMenu();
+    }
+
+    public void CloseShopMenu()
+    {
+        shopMenuUI.SetActive(false);
+        targetNode = null;
+    }
+
+    public void CloseUpgradeMenu()
+    {
+        upgradeMenuUI.SetActive(false);
         targetNode = null;
     }
 }
